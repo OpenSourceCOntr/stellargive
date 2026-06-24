@@ -126,15 +126,25 @@ test.describe("Donation Flow (Mock Wallet)", () => {
   }) => {
     await page.goto("/");
 
-    // The mock wallet auto-connects, so we should see the address in the navbar
-    // The WalletConnect component shows a truncated address when connected
-    const walletButton = page
-      .locator("button:visible")
-      .filter({ hasText: /G[A-Z0-9]+/ })
-      .first();
+    // On mobile the wallet button lives inside a hamburger drawer that starts
+    // closed (translateX(-100%)). Open it so the button enters the viewport.
+    const mobileMenuBtn = page.locator('button[aria-label="Open menu"]');
+    if (await mobileMenuBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await mobileMenuBtn.click();
+      // Wait for drawer to slide in (300ms CSS transition)
+      await expect(
+        page.locator('button[aria-label="Close menu"]')
+      ).toBeVisible({ timeout: 2_000 });
+    }
 
-    // Wait for the page to hydrate and the wallet to connect
-    await expect(walletButton).toBeVisible({ timeout: 15_000 });
+    // The mock wallet auto-connects; address button is in the desktop nav
+    // (desktop) or the now-open mobile drawer (mobile)
+    const walletButton = page
+      .locator("button")
+      .filter({ hasText: /G[A-Z0-9]+/ })
+      .filter({ visible: true });
+
+    await expect(walletButton.first()).toBeVisible({ timeout: 15_000 });
   });
 
   test("completes donation flow and shows success with transaction hash", async ({
